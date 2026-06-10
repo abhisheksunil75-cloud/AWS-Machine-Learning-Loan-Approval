@@ -1,12 +1,27 @@
 import json
-import time
-def mock_sagemaker_endppoint(payload):
-    cibil=payload.get("cibil",0)
-    salary=payload.get("salary",0)
+import boto3
+import os
 
-    if cibil>=750 and salary>=50000:
-        return{"status":"Approved","confidence_score":0.96}
-    elif cibil>=650 and salary >=30000:
-        return{"status":"Under Review","confidence_score":0.89}
-    else:
-        return{"status":"Rejected","confident_score":0.72}
+sagemaker_runtime=boto3.client("sagemaker-runtime")
+lambda_client = boto3.client('lambda')
+
+def lambda_handler(event, context):
+    try:
+        body=event.get('body',event)
+        if isinstance(body,str):
+            body = json.loads(body)
+        
+        salary = body.get('salary')
+        cibil = body.get('cibil')
+        vehicle_model=body.get("vehicle_model")
+# Validation
+        if not all([salary,cibil,vehicle_model]):
+            return{
+                "statusCode":400,
+                "body":json.dumps({"error":"Missing required fields:salary,cibil or vehicle_modell"})
+            }
+# Clean processing payload
+        sagemaker_payload={
+            "salary":float(salary),
+            "cibil":int(cibil),
+            "vehicle_model":str(vehicle_model)
